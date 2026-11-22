@@ -50,22 +50,24 @@ function run(p: Uint8Array, inp: Uint8Array): { out: Uint8Array; code: number } 
       case 0x20: case 0x21: case 0x22: {
         if (sp < 2) return end(2);
         const b = st[sp - 1], a = st[sp - 2]; let r: number;
-        if (op === 0x10) r = a + b | 0;
-        else if (op === 0x11) r = a - b | 0;
-        else if (op === 0x12) r = Math.imul(a, b);
-        else if (op === 0x13) { if (!b) return end(4); r = a === INT_MIN && b === -1 ? a : a / b | 0; }
-        else if (op === 0x14) { if (!b) return end(4); r = b === -1 ? 0 : a % b | 0; }
-        else if (op === 0x15) { if (!b) return end(4); r = Math.floor((a >>> 0) / (b >>> 0)) | 0; }
-        else if (op === 0x16) { if (!b) return end(4); r = (a >>> 0) % (b >>> 0) | 0; }
-        else if (op === 0x18) r = a & b;
-        else if (op === 0x19) r = a | b;
-        else if (op === 0x1a) r = a ^ b;
-        else if (op === 0x1c) r = a << (b & 31);
-        else if (op === 0x1d) r = a >> (b & 31);
-        else if (op === 0x1e) r = a >>> (b & 31) | 0;
-        else if (op === 0x20) r = a === b ? 1 : 0;
-        else if (op === 0x21) r = a < b ? 1 : 0;
-        else r = (a >>> 0) < (b >>> 0) ? 1 : 0;
+        switch (op) {
+          case 0x10: r = a + b | 0; break;
+          case 0x11: r = a - b | 0; break;
+          case 0x12: r = Math.imul(a, b); break;
+          case 0x13: if (!b) return end(4); r = a === INT_MIN && b === -1 ? a : a / b | 0; break;
+          case 0x14: if (!b) return end(4); r = b === -1 ? 0 : a % b | 0; break;
+          case 0x15: if (!b) return end(4); r = Math.floor((a >>> 0) / (b >>> 0)) | 0; break;
+          case 0x16: if (!b) return end(4); r = (a >>> 0) % (b >>> 0) | 0; break;
+          case 0x18: r = a & b; break;
+          case 0x19: r = a | b; break;
+          case 0x1a: r = a ^ b; break;
+          case 0x1c: r = a << (b & 31); break;
+          case 0x1d: r = a >> (b & 31); break;
+          case 0x1e: r = a >>> (b & 31) | 0; break;
+          case 0x20: r = a === b ? 1 : 0; break;
+          case 0x21: r = a < b ? 1 : 0; break;
+          default: r = (a >>> 0) < (b >>> 0) ? 1 : 0;
+        }
         sp -= 2; st[sp++] = r; break;
       }
       case 0x30: case 0x31: case 0x32: {
@@ -77,7 +79,7 @@ function run(p: Uint8Array, inp: Uint8Array): { out: Uint8Array; code: number } 
       case 0x34: if (!cp) return end(8); pc = cs[--cp]; break;
       case 0x40: { if (sp < 1) return end(2); const a = st[sp - 1]; if (a < 0 || a > 255) return end(6); st[sp - 1] = mem[a]; break; }
       case 0x41: { if (sp < 2) return end(2); const a = st[sp - 1]; if (a < 0 || a > 255) return end(6); sp -= 2; mem[a] = st[sp]; break; }
-      case 0x50: { if (sp < 1) return end(2); const s = String(st[sp - 1]); if (ol + s.length > OUT) return end(11); sp--; for (let i = 0; i < s.length; i++) out[ol++] = s.charCodeAt(i); break; }
+      case 0x50: { if (sp < 1) return end(2); let v = st[--sp]; const neg = v < 0; let u = neg ? -v : v; const d = new Uint8Array(11); let n = 0; if (u === 0) d[n++] = 48; else while (u > 0) { d[n++] = 48 + u % 10; u = Math.floor(u / 10); } const len = n + (neg ? 1 : 0); if (ol + len > OUT) return end(11); if (neg) out[ol++] = 45; while (n) out[ol++] = d[--n]; break; }
       case 0x51: if (sp < 1) return end(2); if (ol + 1 > OUT) return end(11); out[ol++] = st[--sp] & 255; break;
       case 0x52: if (sp >= 256) return end(3); st[sp++] = ip < inp.length ? inp[ip++] : -1; break;
       case 0x53: if (sp < 1) return end(2); return end(st[--sp] & 255);
